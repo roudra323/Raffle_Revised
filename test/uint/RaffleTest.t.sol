@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {Test} from "forge-std/Test.sol";
+// Foundry imports
+import {Test} from "forge-std/Test.sol"; // The Test contract provides testing utilities and assertions
 import {Raffle} from "src/Raffle.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
-import {Vm} from "forge-std/Vm.sol";
+import {Vm} from "forge-std/Vm.sol"; // Virtual Machine interface for cheatcodes
 import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
+// Test contract inherits from Foundry's Test contract to get access to testing utilities
 contract RaffleTest is Test {
     Raffle public raffle;
     HelperConfig public helperConfig;
@@ -20,19 +22,25 @@ contract RaffleTest is Test {
     uint256 subId;
     uint32 callbackGasLimit;
 
-    // Mock addresses
+    // Using Foundry's makeAddr cheatcode to create a deterministic address for testing
+    // This creates a labeled address with a private key that can be used with prank
     address public PLAYER = makeAddr("player");
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
+    // Events are declared here to be used with vm.expectEmit()
     event RaffleEntered(address indexed player);
     event WinnerPicked(address indexed winner);
 
+    // The setUp function is a special Foundry function that runs before each test
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.deployContract();
+
+        // vm is a special object provided by Foundry that gives access to cheatcodes
+        // vm.deal gives ETH to an address
         vm.deal(PLAYER, STARTING_USER_BALANCE);
 
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
@@ -45,46 +53,57 @@ contract RaffleTest is Test {
         callbackGasLimit = config.callbackGasLimit;
     }
 
+    // In Foundry, test functions must start with "test_"
+    // Functions with "view" are read-only and don't modify state
     function test_RaffleInitializesInOpenState() public view {
+        // Foundry's assert is used for boolean checks
         assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
     }
 
     function test_RaffleRevertsWhenYouDontSendEnoughEth() public {
-        //Arrange
+        // vm.prank sets msg.sender for the next transaction
         vm.prank(PLAYER);
-        //Act
-        vm.expectRevert(Raffle.Raffle__SendMoreToEnterRaffle.selector); // custom error
+
+        // vm.expectRevert checks that the next call reverts with a specific error
+        // The .selector converts the error to its function selector (first 4 bytes of the error signature)
+        vm.expectRevert(Raffle.Raffle__SendMoreToEnterRaffle.selector);
         raffle.enterRaffle();
     }
 
     function test_RaffleStoresPlayerAddressIfEnteredCorrectly() public {
-        //Arrange
+        // Arrange section: Set up the test conditions
         vm.prank(PLAYER);
-        //Act
+
+        // Act section: Perform the action being tested
+        // Use the {} syntax to send ETH with a function call
         raffle.enterRaffle{value: entranceFee}();
-        //Assert
+
+        // Assert section: Check the results
         address playerRecorded = raffle.getPlayer(0);
+        // assertEq compares values and provides a clearer error message than assert
         assertEq(playerRecorded, PLAYER);
     }
 
     function test_EnteringRaffleEmitsEvent() public {
-        //Arrange
         vm.prank(PLAYER);
-        //Act
-        // one indexed value (Topic)
+
+        // vm.expectEmit checks that the next call emits a specific event
+        // Parameters: (topic1Check, topic2Check, topic3Check, dataCheck, emitter)
+        // Here, only checking the first topic (indexed parameter) and the emitter address
         vm.expectEmit(true, false, false, false, address(raffle));
-        emit RaffleEntered(PLAYER);
-        //Assert
+        emit RaffleEntered(PLAYER); // The event signature we expect
+
         raffle.enterRaffle{value: entranceFee}();
     }
 
+    // This test uses a custom modifier 'raffleEntered' to set up the test state
     function test_DontAllowPlayersWhileRaffleIsCalculating()
         public
         raffleEntered
     {
         raffle.performUpkeep("");
-        //Act / Assert
-        vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector); // custom error
+
+        vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
 
         vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
@@ -95,23 +114,25 @@ contract RaffleTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function test_checkUpKeepReturnsFalseIfBalanceIsZero() public {
-        //Arrange
+        // vm.warp sets the block timestamp
         vm.warp(block.timestamp + interval + 1);
+        // vm.roll sets the block number
         vm.roll(block.number + 1);
-        //Act
+
+        // Destructuring the return values from the function call
         (bool upkeepNeeded, ) = raffle.checkUpkeep("");
-        //Assert
+
         assert(!upkeepNeeded);
     }
 
     function test_checkUpKeepReturnsFalseIfRaffleIsClosed()
         public
-        raffleEntered
+        raffleEntered // Using the custom modifier
     {
         raffle.performUpkeep("");
-        //Act
+
         (bool upkeepNeeded, ) = raffle.checkUpkeep("");
-        //Assert
+
         assert(!upkeepNeeded);
     }
 
@@ -120,10 +141,11 @@ contract RaffleTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function test_performUpKeepFailsIfUpkeepNeededIsFalse() public {
-        //Arrange
         vm.warp(block.timestamp + interval + 1);
         vm.roll(block.number + 1);
-        //Act
+
+        // vm.expectRevert with abi.encodeWithSelector allows testing for errors with parameters
+        // This is useful for custom errors that take arguments
         vm.expectRevert(
             abi.encodeWithSelector(
                 Raffle.Raffle__UpKeepNotNeeded.selector,
@@ -131,29 +153,34 @@ contract RaffleTest is Test {
                 raffle.getNumberOfPlayers(),
                 Raffle.RaffleState.OPEN
             )
-        ); // custom error
+        );
         raffle.performUpkeep("");
     }
 
+    // Custom modifier pattern in Foundry tests
+    // This modifier encapsulates common setup code used by multiple tests
     modifier raffleEntered() {
         vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
         vm.warp(block.timestamp + interval + 1);
         vm.roll(block.number + 1);
-        _;
+        _; // The underscore represents where the test function code will be executed
     }
 
     function test_performUpkeepUpdatesRaffleStateAndEmitsRequestId()
         public
         raffleEntered
     {
-        // Act
+        // vm.recordLogs starts recording emitted events
         vm.recordLogs();
         raffle.performUpkeep("");
+        // vm.getRecordedLogs retrieves all recorded events
         Vm.Log[] memory entries = vm.getRecordedLogs();
+        // Access topics (indexed parameters) from the emitted events
+        // topics[0] is the event signature hash, topics[1] is the first indexed parameter
         bytes32 requestId = entries[1].topics[1];
 
-        // Assert
+        // Checking that the event signature matches the expected one
         assertEq(
             entries[1].topics[0],
             keccak256("RequestedRaffleWinner(uint256)")
@@ -166,11 +193,12 @@ contract RaffleTest is Test {
                           FULLFULL RANDOMWORDS
     //////////////////////////////////////////////////////////////*/
 
-    // stateless fuzz testing
+    // Foundry's stateless fuzz testing
+    // The parameter _requestId will be randomly generated for each test run
     function test_fullfillRandomWordsCanOnlyBeCalledAfterPerformupkeep(
         uint256 _requestId
     ) public raffleEntered {
-        //Act
+        // Testing that the fulfillRandomWords function reverts when called directly
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
             _requestId,
