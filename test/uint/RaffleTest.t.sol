@@ -97,10 +97,7 @@ contract RaffleTest is Test {
     }
 
     // This test uses a custom modifier 'raffleEntered' to set up the test state
-    function test_DontAllowPlayersWhileRaffleIsCalculating()
-        public
-        raffleEntered
-    {
+    function test_DontAllowPlayersWhileRaffleIsCalculating() public raffleEntered {
         raffle.performUpkeep("");
 
         vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
@@ -120,7 +117,7 @@ contract RaffleTest is Test {
         vm.roll(block.number + 1);
 
         // Destructuring the return values from the function call
-        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        (bool upkeepNeeded,) = raffle.checkUpkeep("");
 
         assert(!upkeepNeeded);
     }
@@ -131,7 +128,7 @@ contract RaffleTest is Test {
     {
         raffle.performUpkeep("");
 
-        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        (bool upkeepNeeded,) = raffle.checkUpkeep("");
 
         assert(!upkeepNeeded);
     }
@@ -167,10 +164,7 @@ contract RaffleTest is Test {
         _; // The underscore represents where the test function code will be executed
     }
 
-    function test_performUpkeepUpdatesRaffleStateAndEmitsRequestId()
-        public
-        raffleEntered
-    {
+    function test_performUpkeepUpdatesRaffleStateAndEmitsRequestId() public raffleEntered {
         // vm.recordLogs starts recording emitted events
         vm.recordLogs();
         raffle.performUpkeep("");
@@ -181,10 +175,7 @@ contract RaffleTest is Test {
         bytes32 requestId = entries[1].topics[1];
 
         // Checking that the event signature matches the expected one
-        assertEq(
-            entries[1].topics[0],
-            keccak256("RequestedRaffleWinner(uint256)")
-        );
+        assertEq(entries[1].topics[0], keccak256("RequestedRaffleWinner(uint256)"));
         assert(requestId != 0);
         assert(raffle.getRaffleState() == Raffle.RaffleState.CALCULATING);
     }
@@ -195,31 +186,19 @@ contract RaffleTest is Test {
 
     // Foundry's stateless fuzz testing
     // The parameter _requestId will be randomly generated for each test run
-    function test_fullfillRandomWordsCanOnlyBeCalledAfterPerformupkeep(
-        uint256 _requestId
-    ) public raffleEntered {
+    function test_fullfillRandomWordsCanOnlyBeCalledAfterPerformupkeep(uint256 _requestId) public raffleEntered {
         // Testing that the fulfillRandomWords function reverts when called directly
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
-        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
-            _requestId,
-            address(raffle)
-        );
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(_requestId, address(raffle));
     }
 
-    function test_fullfillRandomWordsPicksAWinnerResetsAndSendsMoney()
-        public
-        raffleEntered
-    {
+    function test_fullfillRandomWordsPicksAWinnerResetsAndSendsMoney() public raffleEntered {
         // Arrange
         address expectedWinner = address(1);
         uint256 additionalEntrances = 3; // 4 players total
         uint256 startingIndex = 1;
 
-        for (
-            startingIndex;
-            startingIndex <= additionalEntrances;
-            startingIndex++
-        ) {
+        for (startingIndex; startingIndex <= additionalEntrances; startingIndex++) {
             hoax(address(uint160(startingIndex)), 1 ether);
             raffle.enterRaffle{value: entranceFee}();
         }
@@ -231,10 +210,7 @@ contract RaffleTest is Test {
         raffle.performUpkeep("");
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 requestId = entries[1].topics[1];
-        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(
-            uint256(requestId),
-            address(raffle)
-        );
+        VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(uint256(requestId), address(raffle));
 
         // Assert
         assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);

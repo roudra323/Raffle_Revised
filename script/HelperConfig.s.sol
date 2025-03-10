@@ -11,8 +11,7 @@ abstract contract CodeConstants {
     // LINK / ETH price
     int256 public MOCK_WEI_PER_UINT_LINK = 4e15;
 
-    address public FOUNDRY_DEFAULT_SENDER =
-        0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
+    address public FOUNDRY_DEFAULT_SENDER = 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
 
     uint256 public constant ETH_SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant ETH_MAINNET_CHAIN_ID = 1;
@@ -72,21 +71,13 @@ contract HelperConfig is CodeConstants, Script {
         return getConfigByChainId(block.chainid);
     }
 
-    function setConfig(
-        uint256 chainId,
-        NetworkConfig memory networkConfig
-    ) public {
+    function setConfig(uint256 chainId, NetworkConfig memory networkConfig) public {
         networkConfigs[chainId] = networkConfig;
     }
 
-    function getConfigByChainId(
-        uint256 chainId
-    ) public returns (NetworkConfig memory) {
+    function getConfigByChainId(uint256 chainId) public returns (NetworkConfig memory) {
         if (networkConfigs[chainId].vrfCoordinatorV2_5 != address(0)) {
-            console2.log(
-                "Using pre-configured network settings for chain ID:",
-                chainId
-            );
+            console2.log("Using pre-configured network settings for chain ID:", chainId);
             return networkConfigs[chainId];
         } else if (chainId == LOCAL_CHAIN_ID) {
             console2.log("Using local Anvil configuration");
@@ -97,19 +88,11 @@ contract HelperConfig is CodeConstants, Script {
         }
     }
 
-    function getMainnetEthConfig()
-        public
-        view
-        returns (NetworkConfig memory mainnetNetworkConfig)
-    {
+    function getMainnetEthConfig() public view returns (NetworkConfig memory mainnetNetworkConfig) {
         // For production mainnet deployments, strongly recommend using env variable
         if (!envVarFound && block.chainid == ETH_MAINNET_CHAIN_ID) {
-            console2.log(
-                unicode"⚠️ WARNING: Deploying to mainnet without ACCOUNT_ADDRESS environment variable set!"
-            );
-            console2.log(
-                "Using default account, this may not be what you want for production!"
-            );
+            console2.log(unicode"⚠️ WARNING: Deploying to mainnet without ACCOUNT_ADDRESS environment variable set!");
+            console2.log("Using default account, this may not be what you want for production!");
         }
 
         mainnetNetworkConfig = NetworkConfig({
@@ -124,11 +107,7 @@ contract HelperConfig is CodeConstants, Script {
         });
     }
 
-    function getSepoliaEthConfig()
-        public
-        view
-        returns (NetworkConfig memory sepoliaNetworkConfig)
-    {
+    function getSepoliaEthConfig() public view returns (NetworkConfig memory sepoliaNetworkConfig) {
         sepoliaNetworkConfig = NetworkConfig({
             subscriptionId: 0, // If left as 0, our scripts will create one!
             gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
@@ -151,11 +130,8 @@ contract HelperConfig is CodeConstants, Script {
         console2.log("Make sure this was intentional");
 
         vm.startBroadcast();
-        VRFCoordinatorV2_5Mock vrfCoordinatorV2_5Mock = new VRFCoordinatorV2_5Mock(
-                MOCK_BASE_FEE,
-                MOCK_GAS_PRICE_LINK,
-                MOCK_WEI_PER_UINT_LINK
-            );
+        VRFCoordinatorV2_5Mock vrfCoordinatorV2_5Mock =
+            new VRFCoordinatorV2_5Mock(MOCK_BASE_FEE, MOCK_GAS_PRICE_LINK, MOCK_WEI_PER_UINT_LINK);
         LinkToken link = new LinkToken();
         uint256 subscriptionId = vrfCoordinatorV2_5Mock.createSubscription();
         vm.stopBroadcast();

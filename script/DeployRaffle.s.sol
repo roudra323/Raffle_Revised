@@ -15,20 +15,13 @@ contract DeployRaffle is Script {
         if (config.subscriptionId == 0) {
             // create subcription
             CreateSubcription createSubcription = new CreateSubcription();
-            (
-                config.subscriptionId,
-                config.vrfCoordinatorV2_5
-            ) = createSubcription.createSubcriptionUsingConfig();
+            (config.subscriptionId, config.vrfCoordinatorV2_5) = createSubcription.createSubcriptionUsingConfig();
         }
         console2.log("DeployRaffle___Subcription Id: ", config.subscriptionId);
 
         // fund subcription
         FundSubcription fundSubcription = new FundSubcription();
-        fundSubcription.fundSubcription(
-            config.vrfCoordinatorV2_5,
-            config.subscriptionId,
-            config.link
-        );
+        fundSubcription.fundSubcription(config.vrfCoordinatorV2_5, config.subscriptionId, config.link);
 
         vm.startBroadcast();
         Raffle raffle = new Raffle(
@@ -42,11 +35,7 @@ contract DeployRaffle is Script {
 
         vm.stopBroadcast();
         AddConsumer addConsumer = new AddConsumer();
-        addConsumer.addConsumer(
-            address(raffle),
-            config.vrfCoordinatorV2_5,
-            config.subscriptionId
-        );
+        addConsumer.addConsumer(address(raffle), config.vrfCoordinatorV2_5, config.subscriptionId);
 
         return (raffle, helperConfig);
     }
