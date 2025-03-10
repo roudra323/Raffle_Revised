@@ -16,3 +16,8 @@ fs_permissions = [
     { access = "read", path = "./broadcast" },
     { access = "read", path = "./reports" },
 ]
+
+
+[fmt]
+# exclude lib directory
+exclude = ["lib/**/*.sol"]

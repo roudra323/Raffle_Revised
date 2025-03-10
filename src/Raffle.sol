@@ -41,11 +41,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     error Raffle__TransferFailed();
     error Raffle__RaffleNotOpen();
     error Raffle__IntervalNotPassed();
-    error Raffle__UpKeepNotNeeded(
-        uint256 balance,
-        uint256 players,
-        uint256 state
-    );
+    error Raffle__UpKeepNotNeeded(uint256 balance, uint256 players, uint256 state);
 
     /*//////////////////////////////////////////////////////////////
                            TYPE DECLARATIONS
@@ -59,7 +55,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                            State VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-    uint16 private constant REQURST_CONFIRMATIONS = 3;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
 
     uint256 private immutable i_entranceFee;
@@ -78,7 +74,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     //////////////////////////////////////////////////////////////*/
     event RaffleEntered(address indexed player);
     event WinnerPicked(address indexed winner);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
+    /*//////////////////////////////////////////////////////////////
+                               FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
     constructor(
         uint256 entranceFee,
         uint256 interval,
@@ -118,13 +118,11 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      * @return upkeepNeeded - true if it is time to pick a winner
      * @return - ignored
      */
-    function checkUpkeep(
-        bytes calldata /* checkData */
-    )
+    function checkUpkeep(bytes calldata /* checkData */ )
         public
         view
         override
-        returns (bool upkeepNeeded, bytes memory /* performData */)
+        returns (bool upkeepNeeded, bytes memory /* performData */ )
     {
         bool timeHasPassed = (block.timestamp - s_lastTimestamp >= i_interval);
         bool isOpen = s_raffleState == RaffleState.OPEN;
@@ -140,39 +138,34 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
      * @notice This function is called by the Automation Node to pick a winner
      * @param  - ignored
      */
-    function performUpkeep(bytes calldata /* performData */) external override {
-        (bool upkeepNeeded, ) = this.checkUpkeep("");
+    function performUpkeep(bytes calldata /* performData */ ) external override {
+        (bool upkeepNeeded,) = this.checkUpkeep("");
         if (!upkeepNeeded) {
-            revert Raffle__UpKeepNotNeeded(
-                address(this).balance,
-                s_players.length,
-                uint256(s_raffleState)
-            );
+            revert Raffle__UpKeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
 
         s_raffleState = RaffleState.CALCULATING;
 
-        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient
-            .RandomWordsRequest({
-                keyHash: i_keyHash,
-                subId: i_subscriptionId,
-                requestConfirmations: REQURST_CONFIRMATIONS,
-                callbackGasLimit: i_callbackgaslimit,
-                numWords: NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-                )
-            });
+        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
+            keyHash: i_keyHash,
+            subId: i_subscriptionId,
+            requestConfirmations: REQUEST_CONFIRMATIONS,
+            callbackGasLimit: i_callbackgaslimit,
+            numWords: NUM_WORDS,
+            extraArgs: VRFV2PlusClient._argsToBytes(VRFV2PlusClient.ExtraArgsV1({nativePayment: false}))
+        });
 
         // Use the inherited s_vrfCoordinator from VRFConsumerBaseV2Plus
-        /*uint256 requestId = */
-        s_vrfCoordinator.requestRandomWords(request);
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
+
+        emit RequestedRaffleWinner(requestId);
     }
 
     // @question: is it following CEI pattern?
     function fulfillRandomWords(
         uint256,
-        /*requestId*/ uint256[] calldata randomWords
+        /*requestId*/
+        uint256[] calldata randomWords
     ) internal override {
         uint256 winnerIndex = randomWords[0] % s_players.length;
         address payable winner = s_players[winnerIndex];
@@ -184,7 +177,7 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_lastTimestamp = block.timestamp;
         emit WinnerPicked(s_recentWinner);
 
-        (bool success, ) = winner.call{value: address(this).balance}("");
+        (bool success,) = winner.call{value: address(this).balance}("");
         if (!success) {
             revert Raffle__TransferFailed();
         }
@@ -194,15 +187,39 @@ contract Raffle is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                             GETTER FUNCTION
     //////////////////////////////////////////////////////////////*/
 
-    function getEntranceFee() external view returns (uint256) {
-        return i_entranceFee;
-    }
-
-    function getRaffleState() external view returns (RaffleState) {
+    function getRaffleState() public view returns (RaffleState) {
         return s_raffleState;
     }
 
-    function getPlayer(uint256 indexOfPlayer) external view returns (address) {
-        return s_players[indexOfPlayer];
+    function getNumWords() public pure returns (uint256) {
+        return NUM_WORDS;
+    }
+
+    function getRequestConfirmations() public pure returns (uint256) {
+        return REQUEST_CONFIRMATIONS;
+    }
+
+    function getRecentWinner() public view returns (address) {
+        return s_recentWinner;
+    }
+
+    function getPlayer(uint256 index) public view returns (address) {
+        return s_players[index];
+    }
+
+    function getLastTimeStamp() public view returns (uint256) {
+        return s_lastTimestamp;
+    }
+
+    function getInterval() public view returns (uint256) {
+        return i_interval;
+    }
+
+    function getEntranceFee() public view returns (uint256) {
+        return i_entranceFee;
+    }
+
+    function getNumberOfPlayers() public view returns (uint256) {
+        return s_players.length;
     }
 }
