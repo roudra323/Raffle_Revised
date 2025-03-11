@@ -18,7 +18,7 @@ By leveraging blockchain technology, this project provides a transparent, trustl
 ---
 
 ## **Technologies & Tools Used**
-### **1. Solidity (v0.8.XX)**
+### **1. Solidity (v0.8.19)**
 The smart contract is written in **Solidity**, the leading language for Ethereum-based smart contracts. The contract implements security best practices, including reentrancy protection and gas optimization.
 
 ### **2. Chainlink VRF (Verifiable Random Function)**

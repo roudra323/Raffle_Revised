@@ -52,13 +52,11 @@ contract HelperConfig is CodeConstants, Script {
     //////////////////////////////////////////////////////////////*/
     constructor() {
         // Try to get account from environment variable with fallback
-
         if (block.chainid != LOCAL_CHAIN_ID) {
             ACCOUNT = vm.envAddress("ACCOUNT_ADDRESS");
         } else {
             ACCOUNT = FOUNDRY_DEFAULT_SENDER;
         }
-
         // Initialize configurations
         networkConfigs[ETH_SEPOLIA_CHAIN_ID] = getSepoliaEthConfig();
         networkConfigs[ETH_MAINNET_CHAIN_ID] = getMainnetEthConfig();
@@ -89,12 +87,6 @@ contract HelperConfig is CodeConstants, Script {
     }
 
     function getMainnetEthConfig() public view returns (NetworkConfig memory mainnetNetworkConfig) {
-        // For production mainnet deployments, strongly recommend using env variable
-        if (!envVarFound && block.chainid == ETH_MAINNET_CHAIN_ID) {
-            console2.log(unicode"⚠️ WARNING: Deploying to mainnet without ACCOUNT_ADDRESS environment variable set!");
-            console2.log("Using default account, this may not be what you want for production!");
-        }
-
         mainnetNetworkConfig = NetworkConfig({
             subscriptionId: 0, // If left as 0, our scripts will create one!
             gasLane: 0x9fe0eebf5e446e3c998ec9bb19951541aee00bb90ea201ae456421a2ded86805,

@@ -184,15 +184,26 @@ contract RaffleTest is Test {
                           FULLFULL RANDOMWORDS
     //////////////////////////////////////////////////////////////*/
 
+    modifier skipFork() {
+        if (block.chainid != 31337) {
+            return;
+        }
+        _;
+    }
+
     // Foundry's stateless fuzz testing
     // The parameter _requestId will be randomly generated for each test run
-    function test_fullfillRandomWordsCanOnlyBeCalledAfterPerformupkeep(uint256 _requestId) public raffleEntered {
+    function test_fullfillRandomWordsCanOnlyBeCalledAfterPerformupkeep(uint256 _requestId)
+        public
+        raffleEntered
+        skipFork
+    {
         // Testing that the fulfillRandomWords function reverts when called directly
         vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
         VRFCoordinatorV2_5Mock(vrfCoordinator).fulfillRandomWords(_requestId, address(raffle));
     }
 
-    function test_fullfillRandomWordsPicksAWinnerResetsAndSendsMoney() public raffleEntered {
+    function test_fullfillRandomWordsPicksAWinnerResetsAndSendsMoney() public raffleEntered skipFork {
         // Arrange
         address expectedWinner = address(1);
         uint256 additionalEntrances = 3; // 4 players total
